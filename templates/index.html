@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyCast - Premium Weather</title>
+    <!-- Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons for weather icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background-image: url("{{ bg_image }}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            transition: background-image 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="ph ph-cloud-sun"></i>
+                <span>SkyCast</span>
+            </div>
+            <form method="POST" action="/" class="search-form" id="search-form">
+                <div class="search-bar">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" name="city" placeholder="Search for a city..." required autocomplete="off" autofocus>
+                    <button type="submit" id="search-btn">
+                        <span id="btn-text">Search</span>
+                        <i class="ph ph-spinner-gap" id="btn-spinner" style="display:none;"></i>
+                    </button>
+                </div>
+            </form>
+        </header>
+
+        <main>
+            {% if error %}
+            <div class="error-message">
+                <i class="ph ph-warning-circle"></i>
+                <p>{{ error }}</p>
+            </div>
+            {% endif %}
+
+            {% if weather %}
+            <div class="weather-card glassmorphism">
+                <div class="weather-header">
+                    <div class="location">
+                        <h2>{{ weather.name }}, {{ weather.country }}</h2>
+                        <p class="date" id="current-date"></p>
+                    </div>
+                </div>
+
+                <div class="weather-main">
+                    <div class="temp-block">
+                        <h1 class="temp">{{ weather.temp|round|int }}°C</h1>
+                        <p class="desc">{{ weather.description }}</p>
+                    </div>
+                    <div class="weather-icon">
+                        {% if 'rain' in weather.description.lower() %}
+                            <i class="ph ph-cloud-rain"></i>
+                        {% elif 'cloud' in weather.description.lower() or 'overcast' in weather.description.lower() %}
+                            <i class="ph ph-cloud"></i>
+                        {% elif 'snow' in weather.description.lower() %}
+                            <i class="ph ph-snowflake"></i>
+                        {% elif 'thunder' in weather.description.lower() %}
+                            <i class="ph ph-cloud-lightning"></i>
+                        {% elif weather.is_day %}
+                            <i class="ph ph-sun"></i>
+                        {% else %}
+                            <i class="ph ph-moon"></i>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="weather-details">
+                    <div class="detail-item">
+                        <i class="ph ph-thermometer"></i>
+                        <div class="detail-info">
+                            <span class="label">Feels Like</span>
+                            <span class="value">{{ weather.feels_like|round|int }}°C</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="ph ph-drop"></i>
+                        <div class="detail-info">
+                            <span class="label">Humidity</span>
+                            <span class="value">{{ weather.humidity }}%</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="ph ph-wind"></i>
+                        <div class="detail-info">
+                            <span class="label">Wind Speed</span>
+                            <span class="value">{{ weather.wind_speed }} km/h</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="ph ph-gauge"></i>
+                        <div class="detail-info">
+                            <span class="label">Pressure</span>
+                            <span class="value">{{ weather.pressure }} hPa</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="ph ph-eye"></i>
+                        <div class="detail-info">
+                            <span class="label">Visibility</span>
+                            <span class="value">{{ weather.visibility }} km</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if weather.forecast %}
+                <div class="forecast-container">
+                    <h3 class="forecast-title">5-Day Forecast</h3>
+                    <div class="forecast-list">
+                        {% for day in weather.forecast %}
+                        <div class="forecast-item">
+                            <div class="forecast-date" data-date="{{ day.date }}"></div>
+                            <div class="forecast-icon">
+                                {% if 'rain' in day.description.lower() %}
+                                    <i class="ph ph-cloud-rain"></i>
+                                {% elif 'cloud' in day.description.lower() or 'overcast' in day.description.lower() %}
+                                    <i class="ph ph-cloud"></i>
+                                {% elif 'snow' in day.description.lower() %}
+                                    <i class="ph ph-snowflake"></i>
+                                {% elif 'thunder' in day.description.lower() %}
+                                    <i class="ph ph-cloud-lightning"></i>
+                                {% else %}
+                                    <i class="ph ph-sun"></i>
+                                {% endif %}
+                            </div>
+                            <div class="forecast-temp">
+                                <span class="max">{{ day.max|round|int }}°</span>
+                                <span class="min">{{ day.min|round|int }}°</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% elif not error %}
+            <div class="welcome-card glassmorphism">
+                <h2>Welcome to SkyCast</h2>
+                <p>Enter a city name above to get real-time weather details and view a beautiful background image of the location.</p>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <script>
+        // Set current date
+        const dateElement = document.getElementById('current-date');
+        if (dateElement) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateElement.textContent = new Date().toLocaleDateString('en-US', options);
+        }
+
+        // Format forecast dates
+        const forecastDates = document.querySelectorAll('.forecast-date');
+        forecastDates.forEach(el => {
+            const dateStr = el.getAttribute('data-date');
+            if (dateStr) {
+                const dateObj = new Date(dateStr);
+                const shortDay = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                el.textContent = shortDay;
+            }
+        });
+
+        // Loading state
+        const searchForm = document.getElementById('search-form');
+        const searchBtn = document.getElementById('search-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+
+        if (searchForm) {
+            searchForm.addEventListener('submit', () => {
+                btnText.textContent = 'Searching...';
+                btnSpinner.style.display = 'inline-block';
+                searchBtn.style.opacity = '0.8';
+                searchBtn.style.pointerEvents = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
